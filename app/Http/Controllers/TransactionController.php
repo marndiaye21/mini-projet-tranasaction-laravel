@@ -16,8 +16,6 @@ class TransactionController extends Controller
         if ($transaction['type'] === TransactionType::Deposit->value) {
             $this->depositMoney($transaction);
         }
-
-        // return $this->validClient($request->phone) ? "true": "false";
     }
 
     public function depositMoney(array $transaction) : Transaction | null
@@ -26,11 +24,28 @@ class TransactionController extends Controller
             throw new \Exception("Impossible d'éffectuer le dépôt le numéro indiqué n'est pas valide");
         }
 
-        if ($this->hasAccount($transaction['owner'])) {
-            $ownerPhone = $transaction['owner'];
-            /** @var Account $account */
-            $account = Account::where('account_number', 'like', "___%$ownerPhone%")->first();
-            $account->balance += $transaction['amount'];
+        if (!$this->hasAccount($transaction['owner'])) {
+
+            $receiverPhone = null;
+
+            if ($this->hasAccount($transaction['receiver'])) {
+    
+                $receiverPhone = $transaction['receiver'];
+    
+                $receiverAccount = Account::where('account_number', 'like', "___%$receiverPhone%")->first();
+                $client = Client::where('phone', $transaction['owner'])->first();
+                
+                $receiverAccount->balance += $transaction['amount'];
+                $receiverAccount->update();
+                
+                return Transaction::create([
+                    "amount" => $transaction['amount'],
+                    "type" => $transaction['type'] . '',
+                    "client_id" => $client->id,
+                    "phone_receiver" => $receiverPhone,
+                    "account_type" => trim(explode("=", $receiverAccount->account_number)[1], ' ')
+                ]);
+            }
         }
 
         return null;

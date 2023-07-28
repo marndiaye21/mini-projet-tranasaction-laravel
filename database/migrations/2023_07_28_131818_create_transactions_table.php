@@ -25,7 +25,7 @@ return new class extends Migration
             $table->string('phone_receiver')->nullable();
             $table->foreignIdFor(Client::class)->constrained()->cascadeOnDelete();
             $table->dateTime("datetime")->default(now());
-            $table->string("code", 50);
+            $table->string("code", 50)->nullable();
         });
     }
 
