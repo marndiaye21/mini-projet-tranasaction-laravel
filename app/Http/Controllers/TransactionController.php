@@ -8,20 +8,29 @@ use App\Models\Transaction;
 use Illuminate\Support\Str;
 use Illuminate\Http\Request;
 use App\Enum\TransactionType;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 
 class TransactionController extends Controller
 {
     private const DEPOSIT_MIN_AMOUNT = 500;
-    
+
     private $receiverAccount;
+    private $senderAccount;
+
+    public function index()
+    {
+        return Transaction::all();
+    }
 
     public function store(Request $request)
     {
         $transaction = $request->all();
+        return $transaction;
 
-        if ($transaction['type'] === TransactionType::Deposit->value) {
+        if (intval($transaction['type']) === TransactionType::Deposit->value) {
             return $this->depositMoney($transaction);
-        } elseif ($transaction['type'] === TransactionType::Withdraw->value) {
+        } elseif (intval($transaction['type']) === TransactionType::Withdraw->value) {
             return $this->withdrawMoney($transaction);
         }
     }
@@ -49,7 +58,7 @@ class TransactionController extends Controller
             $accountType = trim(explode("=", $this->receiverAccount->account_type)[1], ' ');
         } else {
             $accountType = 'WR';
-            $code = Str::random(15);
+            $code = $this->generateCode(15);
         }
 
         return Transaction::create([
@@ -60,6 +69,17 @@ class TransactionController extends Controller
             "account_type" => $accountType,
             'code' => $code ?? null,
         ]);
+    }
+
+    public function generateCode(int $size): int
+    {
+        $code = "";
+
+        for ($i = 0; $i < $size; $i++) {
+            $code .= mt_rand(0, 9);
+        }
+
+        return $code;
     }
 
     public function withdrawMoney(array $transaction): Transaction
@@ -119,9 +139,9 @@ class TransactionController extends Controller
 
     private function updateSenderAccount(string $senderPhone, float $amount): void
     {
-        $senderAccount = Account::where('account_number', 'like', "___%$senderPhone%")->first();
-        $senderAccount->balance -= $amount;
-        $senderAccount->update();
+        $this->senderAccount = Account::where('account_number', 'like', "___%$senderPhone%")->first();
+        $this->senderAccount->balance -= $amount;
+        $this->senderAccount->update();
     }
 
     private function hasEnoughBalance(string $senderPhone, float $amount): bool
